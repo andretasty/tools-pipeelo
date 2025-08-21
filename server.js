@@ -205,7 +205,7 @@ process.on('SIGTERM', () => {
   process.emit('SIGINT');
 });
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 8081;
 const server = app.listen(PORT, () => {
   if (cluster.isWorker) {
     console.log(`\n[Worker ${process.pid}] ✅ Servidor rodando na porta ${PORT}`);
