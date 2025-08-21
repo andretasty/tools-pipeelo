@@ -5,7 +5,7 @@ const rateLimit = require('express-rate-limit');
 const slowDown = require('express-slow-down');
 const { default: PQueue } = require('p-queue');
 const path = require('path');
-const cluster = require('cluster');
+// const cluster = require('cluster'); // Disabled for container compatibility
 const { WorkerPool, promiseTimeout, getMemoryUsage } = require('./utils');
 
 const app = express();
@@ -53,9 +53,8 @@ const processingQueue = new PQueue({
 // Memory monitoring
 setInterval(() => {
   const usage = getMemoryUsage();
-  if (cluster.isWorker) {
-    console.log(`[Worker ${process.pid}] Memory: ${usage.heapUsed}/${usage.heapTotal}`);
-  }
+  // Log memory usage in container mode
+  console.log(`[PID ${process.pid}] Memory: ${usage.heapUsed}/${usage.heapTotal}`);
 }, 30000);
 
 // Health check endpoint
@@ -188,28 +187,27 @@ app.post('/extract-upload', upload.single('file'), async (req, res) => {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-  console.log(`\n[Worker ${process.pid}] Recebido SIGINT, encerrando gracefully...`);
+  console.log(`\n[PID ${process.pid}] Recebido SIGINT, encerrando gracefully...`);
   
   try {
     await workerPool.terminate();
-    console.log(`[Worker ${process.pid}] Worker pool finalizado`);
+    console.log(`[PID ${process.pid}] Worker pool finalizado`);
     process.exit(0);
   } catch (err) {
-    console.error(`[Worker ${process.pid}] Erro no shutdown:`, err);
+    console.error(`[PID ${process.pid}] Erro no shutdown:`, err);
     process.exit(1);
   }
 });
 
 process.on('SIGTERM', () => {
-  console.log(`\n[Worker ${process.pid}] Recebido SIGTERM`);
+  console.log(`\n[PID ${process.pid}] Recebido SIGTERM`);
   process.emit('SIGINT');
 });
 
 const PORT = process.env.PORT || 8081;
 const server = app.listen(PORT, '0.0.0.0', () => {
-  if (cluster.isWorker) {
-    console.log(`\n[Worker ${process.pid}] ✅ Servidor rodando na porta ${PORT}`);
-  } else {
+  // Container mode - single process
+  {
     console.log(`\n========================================`);
     console.log(`  Boleto Extractor - QR Code & Linha Digitável`);
     console.log(`========================================\n`);
