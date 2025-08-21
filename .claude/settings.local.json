@@ -12,7 +12,9 @@
       "Bash(git branch:*)",
       "Bash(git push:*)",
       "Bash(rm:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(docker-compose:*)",
+      "Bash(git remote set-url:*)"
     ],
     "deny": [],
     "ask": []

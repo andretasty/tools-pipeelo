@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a boleto extractor service that processes PDF files to extract payment information. It can extract:
+This is a modular toolbox service with multiple utility endpoints. The main tool is the boleto extractor that processes PDF files to extract payment information:
 - QR codes (typically for PIX payments)
 - Linha digitável (47-48 digit payment codes for Brazilian bank slips/boletos)
+
+The system is designed as a toolbox where new tools can be easily added by creating new modules in the `src/tools/` directory.
 
 ## Commands
 
@@ -21,43 +23,78 @@ npm start
 node server.js
 ```
 
-The server runs on port 3000 by default (configurable via PORT environment variable).
+The server runs on port 8090 by default (configurable via PORT environment variable).
 
 ## Architecture
 
 ### Core Components
 
-1. **server.js** - Main Express server with two endpoints:
-   - `/extract` - Accepts PDF URL and downloads it for processing
-   - `/extract-upload` - Accepts PDF file upload via multipart form-data
+1. **src/server.js** - Main Express server that loads and registers tools
+2. **src/toolbox.js** - Toolbox manager that auto-loads tools from `src/tools/` directory
+3. **src/tools/** - Directory containing all tool modules
 
-2. **PDF Processing Pipeline**:
-   - Uses `pdfjs-dist` (legacy build for Node.js compatibility) to parse PDFs
-   - Renders pages to canvas using `node-canvas`
-   - Extracts text content directly from PDF structure
-   - Scans rendered images for QR codes using `jsqr`
+### Main Endpoints
 
-3. **Data Extraction Logic**:
-   - `extractLinhaDigitavel()` - Extracts 47/48 digit payment codes from text using regex patterns
-   - `renderPageImageData()` - Renders PDF page to image and extracts text content
-   - `processPdfBuffer()` - Main processing function that attempts both QR and text extraction
+- `GET /` - Service information and available tools
+- `GET /tools` - Detailed list of all tools and their endpoints  
+- `GET /health` - Health check endpoint
+- `POST /api/<tool-name>/<endpoint>` - Tool-specific endpoints
 
-### Processing Options
+### Available Tools
 
-Both endpoints accept these parameters:
+#### extractor (Boleto Extractor)
+- `POST /api/extractor/extract` - Process PDF from URL
+- `POST /api/extractor/extract-upload` - Upload PDF file for processing
+
+**Parameters:**
 - `page` (default: 1) - Starting page to process
 - `tryAllPages` (default: true) - Whether to scan all pages or just specified page
-- `prefer` (default: 'auto') - Extraction preference:
-  - 'qr' - Only try QR code extraction
-  - 'linha' - Only try linha digitável extraction
-  - 'auto' - Try both methods
+- `prefer` (default: 'auto') - Extraction preference: 'qr', 'linha', or 'auto'
 
-### Response Format
-
-Returns JSON with extraction results:
+**Response Format:**
 - QR code found: `{ page: number, type: 'qr', payload: string }`
 - Linha digitável found: `{ page: number, type: 'linha_digitavel', formatted: string, digitsOnly: string }`
 - Nothing found: `{ type: 'none', message: string }`
+
+#### text-utils (Text Utilities)
+- `POST /api/text-utils/uppercase` - Convert text to uppercase
+- `POST /api/text-utils/lowercase` - Convert text to lowercase  
+- `POST /api/text-utils/clean-phone` - Clean phone number formatting
+- `POST /api/text-utils/format-cpf` - Format CPF with dots and dashes
+- `POST /api/text-utils/validate-email` - Validate email format
+
+### Adding New Tools
+
+Create a new file in `src/tools/` that extends `BaseTool`:
+
+```javascript
+const BaseTool = require('./base-tool');
+
+class MyTool extends BaseTool {
+  constructor() {
+    super('my-tool', 'Tool description', '1.0.0');
+  }
+
+  getRoutes() {
+    return [
+      {
+        method: 'POST',
+        path: '/my-endpoint', 
+        handler: this.myHandler.bind(this),
+        description: 'Endpoint description'
+      }
+    ];
+  }
+
+  myHandler(req, res) {
+    // Implementation
+  }
+}
+
+module.exports = MyTool;
+```
+
+Tools are automatically discovered and loaded on server start.
 
 ## Technical Notes
 

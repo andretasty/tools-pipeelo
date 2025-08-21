@@ -1,0 +1,25 @@
+services:
+  boleto-extractor:
+    image: boleto-extractor
+    container_name: boleto-extractor
+    restart: always
+    networks:
+      - traefik_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.boleto.rule=Host(`tools.pipeelo.com`)"
+      - "traefik.http.routers.boleto.entrypoints=web"
+      - "traefik.http.services.boleto.loadbalancer.server.port=8081"
+      # Redirect HTTP to HTTPS
+      - "traefik.http.routers.boleto.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      # HTTPS configuration
+      - "traefik.http.routers.boleto-secure.rule=Host(`tools.pipeelo.com`)"
+      - "traefik.http.routers.boleto-secure.entrypoints=websecure"
+      - "traefik.http.routers.boleto-secure.tls=true"
+      - "traefik.http.routers.boleto-secure.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.boleto-secure.service=boleto"
+
+networks:
+  traefik_default:
+    external: true
