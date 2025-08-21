@@ -23,11 +23,44 @@ const upload = multer({
   }
 });
 
-// Health check endpoint
+// Health check endpoint - mais robusto para EasyPanel
 app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    uptime: process.uptime()
+  try {
+    res.status(200).json({
+      status: 'healthy',
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        total: Math.round(process.memoryUsage().rss / 1024 / 1024)
+      },
+      pid: process.pid
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'unhealthy',
+      error: err.message
+    });
+  }
+});
+
+// Endpoint alternativo mais simples para health check
+app.get('/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
+// Endpoint para root também
+app.get('/', (req, res) => {
+  res.status(200).json({
+    service: 'Boleto Extractor',
+    status: 'running',
+    version: '1.0.0',
+    endpoints: [
+      'GET /health - Health check',
+      'GET /ping - Simple ping',
+      'POST /extract - Process PDF from URL',
+      'POST /extract-upload - Upload PDF file'
+    ]
   });
 });
 
