@@ -296,16 +296,70 @@ app.post('/extract-upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// Graceful shutdown
+// Handlers de erro global
+process.on('uncaughtException', (err) => {
+  console.error('Erro não capturado:', err);
+  console.error('Stack:', err.stack);
+  // Não encerrar o processo automaticamente
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Promise rejeitada não tratada:', reason);
+  console.error('Promise:', promise);
+  // Não encerrar o processo automaticamente
+});
+
+// Graceful shutdown apenas para sinais explícitos
 process.on('SIGINT', () => {
-  console.log('\nServidor encerrando...');
-  process.exit(0);
+  console.log('\n[SIGINT] Recebido sinal de interrupção manual...');
+  console.log('Encerrando servidor graciosamente...');
+  server.close(() => {
+    console.log('Servidor encerrado.');
+    process.exit(0);
+  });
 });
 
 process.on('SIGTERM', () => {
-  console.log('\nServidor encerrando...');
-  process.exit(0);
+  console.log('\n[SIGTERM] Recebido sinal de término...');
+  console.log('Encerrando servidor graciosamente...');
+  server.close(() => {
+    console.log('Servidor encerrado.');
+    process.exit(0);
+  });
 });
+
+// Log quando o processo está sendo finalizado
+process.on('exit', (code) => {
+  console.log(`\n[EXIT] Processo finalizando com código: ${code}`);
+});
+
+// Log de sinais recebidos
+process.on('SIGUSR1', () => {
+  console.log('[SIGUSR1] Sinal recebido - ignorando');
+});
+
+process.on('SIGUSR2', () => {
+  console.log('[SIGUSR2] Sinal recebido - ignorando');
+});
+
+// Configurar timeouts mais longos para requests
+app.use((req, res, next) => {
+  req.setTimeout(120000); // 2 minutos
+  res.setTimeout(120000); // 2 minutos
+  next();
+});
+
+// Monitoramento de memória
+setInterval(() => {
+  const used = process.memoryUsage();
+  console.log(`Memory usage: RSS ${Math.round(used.rss / 1024 / 1024 * 100) / 100} MB, Heap ${Math.round(used.heapUsed / 1024 / 1024 * 100) / 100} MB`);
+  
+  // Force garbage collection se disponível
+  if (global.gc && used.heapUsed > 500 * 1024 * 1024) { // > 500MB
+    console.log('Forçando garbage collection...');
+    global.gc();
+  }
+}, 30000); // A cada 30 segundos
 
 const PORT = process.env.PORT || 8090;
 const server = app.listen(PORT, '0.0.0.0', () => {
@@ -313,10 +367,35 @@ const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`  Boleto Extractor Service`);
   console.log(`========================================\n`);
   console.log(`✅ Servidor rodando na porta ${PORT}`);
+  console.log(`📋 PID: ${process.pid}`);
+  console.log(`🖥️  Node.js: ${process.version}`);
+  console.log(`⏰ Iniciado em: ${new Date().toISOString()}`);
   console.log(`\nEndpoints:`);
   console.log(`  POST /extract - Processar PDF via URL`);
   console.log(`  POST /extract-upload - Upload de arquivo PDF`);
   console.log(`  GET /health - Status do servidor\n`);
 });
+
+// Log de eventos do servidor
+server.on('error', (err) => {
+  console.error('Erro no servidor:', err);
+});
+
+server.on('close', () => {
+  console.log('Servidor HTTP fechado');
+});
+
+// Keepalive para manter processo ativo
+const keepAlive = setInterval(() => {
+  console.log(`[${new Date().toISOString()}] Processo ativo - PID: ${process.pid}, Uptime: ${Math.floor(process.uptime())}s`);
+}, 60000); // A cada minuto
+
+// Limpar interval no shutdown
+process.on('exit', () => {
+  clearInterval(keepAlive);
+});
+
+// Configurar timeout do servidor
+server.timeout = 120000; // 2 minutos
 
 module.exports = server;
