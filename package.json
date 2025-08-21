@@ -1,0 +1,22 @@
+{
+  "name": "boleto-extractor",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:cluster": "node cluster.js",
+    "start:production": "NODE_ENV=production node cluster.js"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.77",
+    "axios": "^1.7.7",
+    "express": "^4.21.1",
+    "express-rate-limit": "^8.0.1",
+    "express-slow-down": "^3.0.0",
+    "jsqr": "^1.4.0",
+    "multer": "^2.0.0-rc.4",
+    "p-queue": "^8.1.0",
+    "pdfjs-dist": "^2.16.105"
+  }
+}
