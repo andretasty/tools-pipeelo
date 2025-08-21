@@ -16,7 +16,7 @@
     "express-slow-down": "^3.0.0",
     "jsqr": "^1.4.0",
     "multer": "^2.0.0-rc.4",
-    "p-queue": "^8.1.0",
+    "p-queue": "^6.6.2",
     "pdfjs-dist": "^2.16.105"
   }
 }
